@@ -26,27 +26,36 @@ def run_cmd(cmd, shell=True) -> dict:
 
 # https://docs.ide-on-aws.com/hpc-simulations/user-documentation/supported-ec2-parameters
 # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/
-# For this PoC, I'm not planning to add all EC2 parameters -e.g not testing Spot etc at this point
+# For this PoC, I'm not planning to add all EC2 parameters supported by SOCA/IDEA
 def submit_hpc_job(
     job_body: base64.b64encode,
     nodes_count: int,
-    job_stdout_location: str = False,
-    job_stderr_location: str = False,
-    queue: str = False,
-    job_name: str = False,
-    base_os: str = False,
-    instance_ami: str = False,
-    instance_type: str = False,
-    security_group: str = False,
-    force_ri: str = False,
-    root_size: int = False,
-    scratch_size: int = False,
-    scratch_iops: int = False,
-    efa_support: bool = False,
-    ht_support: bool = False,
-    placement_group: bool = False,
-    fsx_lustre: str = False,
+    base_os: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#base_os
+    efa_support: bool = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#efa_support
+    force_ri: bool = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#force_ri
+    fsx_lustre: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#fsx_lustre
+    fsx_lustre_size: int = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#fsx_lustre_size
+    fsx_lustre_deployment_type: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#fsx_lustre_deployment_type
+    ht_support: bool = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#ht_support_1
+    instance_ami: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#instance_ami
+    instance_profile: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#instance_profile
+    instance_type: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#instance_type
+    job_name: str = False,  # Name of the job. Random uuid will be used if False
+    job_stdout_location: str = False,  # Absolute Path to the stdout file. Created automatically if False.
+    job_stderr_location: str = False,  # Absolute Path to the stderr file. Created automatically if False
+    keep_ebs: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#keep_ebs
+    placement_group: bool = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#placement_group
+    queue: str = False,  # HPC Queue to use, will use default if not set
+    root_size: int = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#root_size
+    scratch_iops: int = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#scratch_iops
+    scratch_size: int = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#scratch_size
+    security_groups: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#security_groups
+    spot_allocation_count: int = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#spot_allocation_count
+    spot_allocation_strategy: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#spot_allocation_strategy
+    spot_price: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#spot_price
+    subnet_id: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#subnet_id
 ) -> dict:
+
     # Retrieve function parameters and add new as needed
     # Note: parameters not set will inherit the default queue value
     # https://awslabs.github.io/scale-out-computing-on-aws/web-interface/create-your-own-queue/#option1-i-want-to-use-the-same-settings-as-an-existing-queue
@@ -57,14 +66,12 @@ def submit_hpc_job(
     ).decode("utf-8")
     if not _openpbs_raw_job_template_data["job_name"]:
         _openpbs_raw_job_template_data["job_name"] = _job_uuid
-
     _current_working_directory = pathlib.Path.cwd()
     _job_script_name = f"{_current_working_directory}/{_job_uuid}.qsub"
     if not job_stdout_location:
-        _job_stdout_location = f"{_current_working_directory}/{_job_uuid}.stdout"
-
+        job_stdout_location = f"{_current_working_directory}/{_job_uuid}.stdout"
     if not job_stderr_location:
-        _job_stderr_location = f"{_current_working_directory}/{_job_uuid}.stderr"
+        job_stderr_location = f"{_current_working_directory}/{_job_uuid}.stderr"
 
     # Job Template
     _openpbs_raw_job_template = """
@@ -127,8 +134,8 @@ def submit_hpc_job(
     return {
         "job_uuid": _job_uuid,
         "job_id": _job_id,
-        "job_stdout": _job_stdout_location,
-        "job_stderr": _job_stderr_location,
+        "job_stdout": job_stdout_location,
+        "job_stderr": job_stderr_location,
         "qsub": _submit_job,
     }
 
