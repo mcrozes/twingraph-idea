@@ -55,7 +55,6 @@ def submit_hpc_job(
     spot_price: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#spot_price
     subnet_id: str = False,  # https://awslabs.github.io/scale-out-computing-on-aws/tutorials/integration-ec2-job-parameters/#subnet_id
 ) -> dict:
-
     # Retrieve function parameters and add new as needed
     # Note: parameters not set will inherit the default queue value
     # https://awslabs.github.io/scale-out-computing-on-aws/web-interface/create-your-own-queue/#option1-i-want-to-use-the-same-settings-as-an-existing-queue
