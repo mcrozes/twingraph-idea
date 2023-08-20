@@ -27,6 +27,15 @@ job_standard_centos = idea_hpc.submit_hpc_job(
     instance_type="m5.large",
 )
 
+# Standard HPC job using CentOS with fallback EC2 instance type
+# In this example job will use m5.large if available, otherwise will try to provision c5.large or r5.large
+# Note: this job also don't have job_name, a uuid will be generated
+job_standard_fallback_ec2 = idea_hpc.submit_hpc_job(
+    job_body=base64.b64encode(b'echo "FallBack EC2 instance"'),
+    nodes_count=1,
+    instance_type="m5.large+c5.large+r5.large",
+)
+
 # Spot job with spot price set to auto (=max on-demand price)
 job_spot = idea_hpc.submit_hpc_job(
     job_body=base64.b64encode(b'echo "Spot Job"'),
@@ -76,6 +85,7 @@ job_mpi = idea_hpc.submit_hpc_job(
 
 print(job_standard)
 print(job_standard_centos)
+print(job_standard_fallback_ec2)
 print(job_spot)
 print(job_extra_storage)
 print(job_efa)
