@@ -221,28 +221,38 @@ def submit_hpc_job(
     }
 
 
-def get_job_output_file(job_output_path: str) -> str:
+def get_job_output_file(job_output_path: str) -> dict:
+    _success = False
     try:
         with open(job_output_path, "r") as f:
-            _data = f.read()
+            _message = f.read()
+            _success = True
     except FileNotFoundError as err:
-        print(
-            f"Unable to read {job_output_path}. You most likely don't have read permission to this location or this file does not exist. Trace {err}"
-        )
-        sys.exit(1)
+        _message = f"Unable to read {job_output_path}. You most likely don't have read permission to this location or this file does not exist. Trace {err}"
+
     except Exception as err:
-        print(f"Unable to read {job_output_path} due to {err}")
-        sys.exit(1)
+        _message = f"Unable to read {job_output_path} due to {err}"
 
-    return _data
+    return {"success": _success, "message": _message}
 
 
-def get_job_status(job_id: int) -> dict:
-    # _get_job_info = run_cmd(f"{QSTAT} -f {job_script_name} -Fjson")
-    _get_job_info = run_cmd(f"ls -ltr")
-    """
-    if int(_get_job_info["return_code"]) == 0:
-        _job_id = _submit_job["stdout"].rstrip().lstrip()
+def get_job_info(job_id: int) -> dict:
+    _get_job_info = run_cmd(f"{QSTAT} -f {job_id} -Fjson -x")
+    if _get_job_info["return_code"] == 0:
+        _qstat_output = json.loads(_get_job_info["stdout"])
+
+        # expected key is <job_id>-<scheduler-ip>. Most of the time we expect users to simply pass the job id.
+        # Below line is to automatically reformat job id into jobid-scheduler-ip
+
+        _job_key = list(_qstat_output["Jobs"].keys())
+        return {
+            "success": True,
+            "job_state": _qstat_output["Jobs"][_job_key[0]]["job_state"],
+            "message": _qstat_output,
+        }
     else:
-        _job_id = None
-    """
+        return {
+            "success": False,
+            "job_state": False,
+            "message": f"Unable to get qstat output for {job_id}. Trace {_get_job_info}",
+        }
