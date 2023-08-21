@@ -6,7 +6,7 @@ import pathlib
 import sys
 import os
 import json
-
+import re
 
 OPENPBS_JOB_BIN_FOLDER = "/opt/pbs/bin"
 QSUB = f"{OPENPBS_JOB_BIN_FOLDER}/qsub"
@@ -192,7 +192,7 @@ def submit_hpc_job(
                 text_file.write(_sanitized_job_script)
         except FileNotFoundError as err:
             print(
-                f"Unable to create {_job_script_name}. You most likely don't have write permission to this location"
+                f"Unable to create {_job_script_name}. You most likely don't have write permission to this location. Trace {err}"
             )
             sys.exit(1)
         except Exception as err:
@@ -204,9 +204,6 @@ def submit_hpc_job(
         _submit_job = run_cmd(f"{QSUB} {depend if depend else ''} {_job_script_name}")
         # _submit_job = run_cmd(f"ls -ltr")
 
-        """
-        {'job_uuid': 'dda015c3-8768-4725-86fc-25a8e0e1e901', 'job_id': '0.ip-60-0-114-81', 'job_stdout': False, 'job_stderr': False, 'qsub': {'return_code': 0, 'stdout': '0.ip-60-0-114-81\n', 'stderr': ''}}
-        """
         if int(_submit_job["return_code"]) == 0:
             _job_id = _submit_job["stdout"].rstrip().lstrip()
             print(f"Job {_job_id} submitted successfully.")
@@ -224,8 +221,20 @@ def submit_hpc_job(
     }
 
 
-def get_job_output(job_uuid: uuid.uuid4) -> str:
-    pass
+def get_job_output_file(job_output_path: str) -> str:
+    try:
+        with open(job_output_path, "r") as f:
+            _data = f.read()
+    except FileNotFoundError as err:
+        print(
+            f"Unable to read {job_output_path}. You most likely don't have read permission to this location or this file does not exist. Trace {err}"
+        )
+        sys.exit(1)
+    except Exception as err:
+        print(f"Unable to read {job_output_path} due to {err}")
+        sys.exit(1)
+
+    return _data
 
 
 def get_job_status(job_id: int) -> dict:

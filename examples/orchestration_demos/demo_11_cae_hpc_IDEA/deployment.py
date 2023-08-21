@@ -9,13 +9,66 @@ import base64
 
 # Standard HPC job on the "normal" queue using ALI2
 job_standard = idea_hpc.submit_hpc_job(
-    job_body=base64.b64encode(b'echo "Standard HPC job running on IDEA"'),
+    job_body=base64.b64encode(b"expr 1 + 1"),
     base_os="amazonlinux2",
     job_name="TestJob",
     queue="normal",
     nodes_count=1,
     instance_type="t3.2xlarge",
 )
+
+# idea_hpc.submit_hpc_job() returns a dictionary. See Example below
+#         {
+#         	'job_uuid': 'dda015c3-8768-4725-86fc-25a8e0e1e901',
+#         	'job_id': '1.ip-60-0-114-81',
+#         	'job_stdout_location': '/data/home/mcrozes/dda015c3-8768-4725-86fc-25a8e0e1e901.stdout',
+#         	'job_stderr_location': /data/home/mcrozes/dda015c3-8768-4725-86fc-25a8e0e1e901.stderr,
+#         	'qsub': {
+#         		'return_code': 0,
+#         		'stdout': '1.ip-60-0-114-81\n',
+#         		'stderr': ''
+#         	}
+#         }
+#
+
+# Run the following job only if previous job completed successfully
+# Note: depend/depend_job_ids are optional here if you perform the output check in Python directly.
+# Another option is to ignore the return_code/output check and simply queue them at the same time
+# In this setup, this job will only be executed if the previous job ran successfully ("afterok:job_id").
+# The only difference here is this job will stay in the queue forever in H (held) state if the previous job did not run successfully.
+
+if job_standard["qsub"]["return_code"] == 0:
+    job_with_dependency = idea_hpc.submit_hpc_job(
+        job_body=base64.b64encode(
+            b'echo "Job run if standard job completed successfully'
+        ),
+        job_name="RunAfterStandard",
+        depend="afterok",
+        depend_job_ids=job_standard["job_id"],
+        nodes_count=1,
+        instance_type="t3.2xlarge",
+    )
+
+# Additionally, in addition of return code, you can browse the job output and decide to run the next job only if:
+# - the previous job(s) ran successfully
+# - the previous job(s) produced the expected output
+
+if job_standard["qsub"]["return_code"] == 0:
+    job_output_content = idea_hpc.get_job_output_file(job_standard["job_stdout_location"])
+    if int(job_output_content) == 2:
+        job_with_dependency_alt = idea_hpc.submit_hpc_job(
+            job_body=base64.b64encode(
+                b'echo "Job run if standard job completed successfully and produced expected output'
+            ),
+            job_name="RunAfterStandard",
+            depend="afterok",
+            depend_job_ids=job_standard["job_id"],
+            nodes_count=1,
+            instance_type="t3.2xlarge",
+        )
+
+
+# Other examples
 
 # Standard HPC job using CentOS and different instance type
 job_standard_centos = idea_hpc.submit_hpc_job(
@@ -64,15 +117,6 @@ job_efa = idea_hpc.submit_hpc_job(
     efa_support=True,
 )
 
-
-job_with_dependency = idea_hpc.submit_hpc_job(
-    job_body=base64.b64encode(b'echo "Job will be executed after Standard HPC Job'),
-    job_name="RunAfterStandard",
-    depend="afterok",
-    depend_job_ids=job_standard["job_id"],
-    nodes_count=1,
-    instance_type="t3.2xlarge",
-)
 
 job_mpi = idea_hpc.submit_hpc_job(
     job_body=base64.b64encode(
